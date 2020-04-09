@@ -3,9 +3,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # config
-IMG1_PATH = 'img/room_l.jpg'
-IMG2_PATH = 'img/room_r.jpg'
-DEST_IMG_PATH = 'img/side-by-side1.jpg'
+IMG1_PATH = '../img/room_l.jpg'
+IMG2_PATH = '../img/room_r.jpg'
+DEST_IMG_PATH = '../img/side-by-side1.jpg'
 
 # load images
 img1 = cv.imread(IMG1_PATH, 1)
