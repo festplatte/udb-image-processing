@@ -53,6 +53,6 @@ thresh = cv.medianBlur(thresh,5)
 
 
 # image segmentation
-# segmented_img = imgL * thresh
-# plt.imshow(segmented_img, 'gray')
-# plt.show()
+segmented_img = imgL * thresh
+plt.imshow(segmented_img, 'gray')
+plt.show()
