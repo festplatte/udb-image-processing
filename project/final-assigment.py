@@ -37,12 +37,12 @@ def build_filter(img):
     return thresh
 
 
-def watershed(img):
+def watershed(img, thresh):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    ret, thresh = cv.threshold(
-        gray, 0, 255, cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
+    # ret, thresh = cv.threshold(
+    #     gray, 0, 255, cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
     # noise removal
-    kernel = np.ones((3, 3), np.uint8)
+    kernel = np.ones((10, 10), np.uint8)
     opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=2)
     # sure background area
     sure_bg = cv.dilate(opening, kernel, iterations=3)
@@ -63,21 +63,118 @@ def watershed(img):
     return markers
 
 
+def dil_er(img, kernel_size=10):
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    img_dilation = cv.dilate(img, kernel, iterations=1)
+    img_erode = cv.erode(img_dilation, kernel, iterations=1)
+    return img_erode
+
+
+class ImageDisplay:
+    def __init__(self):
+        self.images = []
+        self.labels = []
+        self.colors = []
+
+    def add_image(self, img, label, color='gray'):
+        self.images.append(img)
+        self.labels.append(label)
+        self.colors.append(color)
+
+    def show(self):
+        img_len = len(self.images)
+        sqrt = np.ceil(np.sqrt(img_len))
+        # x = np.ceil(sqrt)
+        # y = np.floor(sqrt)
+        for i in range(img_len):
+            plt.subplot(sqrt, sqrt, i +
+                        1), plt.imshow(self.images[i], self.colors[i])
+            plt.title(self.labels[i])
+            plt.xticks([]), plt.yticks([])
+        plt.show()
+
+
 if __name__ == '__main__':
+    img_display = ImageDisplay()
+
     imgL, imgR = load_images()
 
-    # markers = watershed(imgL)
-    # imgL[markers == -1] = [255, 0, 0]
-
+    imgL_rgb = cv.cvtColor(imgL, cv.COLOR_BGR2RGB)
     imgL_gray = cv.cvtColor(imgL, cv.COLOR_BGR2GRAY)
     imgR_gray = cv.cvtColor(imgR, cv.COLOR_BGR2GRAY)
+    img_display.add_image(imgL_gray, 'original')
 
     dept_map = build_dept_map(imgL_gray, imgR_gray)
+    dept_map = dept_map + np.absolute(np.amin(dept_map))
+    dept_map = np.uint8(dept_map / np.amax(dept_map) * 255)
+    dept_map = cv.medianBlur(dept_map, 7)
+    img_display.add_image(dept_map, 'dept map')
+
+    # extract cat
+    # dept_map = dil_er(dept_map)
+    ret, cat_filter1 = cv.threshold(
+        dept_map, 100, 255, cv.THRESH_TOZERO_INV)
+    ret, cat_filter1 = cv.threshold(
+        cat_filter1, 75, 255, cv.THRESH_BINARY)
+    # kernel = np.ones((8, 8), np.uint8)
+    # cat_filter = cv.dilate(cat_filter, kernel, iterations=3)
+    # cat_filter = dil_er(cat_filter)
+    img_display.add_image(cat_filter1, 'cat filter 1')
+
+    # imgL_rgb = cv.cvtColor(imgL, cv.COLOR_BGR2RGB)
+    # markers = watershed(imgL_rgb, cat_filter)
+    # imgL_rgb[markers == -1] = [255, 0, 0]
+
+    cat_filter2 = cv.inRange(imgL_rgb, np.array(
+        [30, 30, 30]), np.array([150, 150, 80]))
+    cat_filter2 = dil_er(cat_filter2, 20)
+    cat_filter2 = cv.bitwise_not(cat_filter2)
+    img_display.add_image(cat_filter2, 'cat filter 2')
+    cat_filter = cv.bitwise_and(cat_filter1, cat_filter2)
+    cat_filter = dil_er(cat_filter)
+    img_display.add_image(cat_filter, 'cat filter')
+
+    cat = cv.bitwise_and(imgL_rgb, imgL_rgb, mask=cat_filter)
+    img_display.add_image(cat, 'cat filtered', 'viridis')
+
+    # thresh = cv.adaptiveThreshold(
+    #     dept_map, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 501, 10)
+    # th = 0
+
+    # ret, thresh1 = cv.threshold(
+    #     imgL_gray, th, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+    # ret, thresh2 = cv.threshold(
+    #     imgL_gray, th, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+    # ret, thresh3 = cv.threshold(
+    #     imgL_gray, th, 255, cv.THRESH_TOZERO + cv.THRESH_OTSU)
+    # ret, thresh4 = cv.threshold(
+    #     imgL_gray, th, 255, cv.THRESH_TOZERO_INV + cv.THRESH_OTSU)
+    # ret, thresh5 = cv.threshold(
+    #     imgL_gray, th, 255, cv.THRESH_TRUNC + cv.THRESH_OTSU)
+
+    # thresh2 = dil_er(thresh2)
+
+    # kernel = np.ones((15, 15), np.uint8)
+    # img_dilation = cv.dilate(dept_map, kernel, iterations=1)
+    # img_erode = cv.erode(img_dilation, kernel, iterations=1)
+    # dept_map_bgr = cv.cvtColor(thresh, cv.COLOR_GRAY2BGR)
+    # markers = watershed(dept_map_bgr)
+    # dept_map_bgr[markers == -1] = [255, 0, 0]
 
     # thresh = build_filter(dept_map)
 
     # segmented_img = cv.cvtColor(imgL, cv.COLOR_BGR2RGB)
     # segmented_img[thresh == 0] = [0, 0, 0]
 
-    plt.imshow(dept_map, 'gray')
-    plt.show()
+    # plt.imshow(thresh, 'gray')
+    # plt.show()
+
+    # titles = ['Original', 'binary', 'binary inv', 'zero',
+    #           'zero inv', 'trunc']
+    # images = [imgL_gray, thresh1, thresh2, thresh3, thresh4, thresh5]
+    # for i in range(len(images)):
+    #     plt.subplot(2, 3, i+1), plt.imshow(images[i], 'gray')
+    #     plt.title(titles[i])
+    #     plt.xticks([]), plt.yticks([])
+    # plt.show()
+    img_display.show()
