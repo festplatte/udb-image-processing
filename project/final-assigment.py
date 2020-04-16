@@ -63,7 +63,7 @@ def watershed(img, thresh):
     return markers
 
 
-def dil_er(img, kernel_size=10):
+def dilation_erode(img, kernel_size=10):
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     img_dilation = cv.dilate(img, kernel, iterations=1)
     img_erode = cv.erode(img_dilation, kernel, iterations=1)
@@ -110,15 +110,18 @@ if __name__ == '__main__':
     dept_map = cv.medianBlur(dept_map, 7)
     img_display.add_image(dept_map, 'dept map')
 
+    # build filter for the whole picture
+    final_filter = np.full(np.shape(imgL), [0, 0, 255])
+
     # extract cat
-    # dept_map = dil_er(dept_map)
+    # dept_map = dilation_erode(dept_map)
     ret, cat_filter1 = cv.threshold(
         dept_map, 100, 255, cv.THRESH_TOZERO_INV)
     ret, cat_filter1 = cv.threshold(
         cat_filter1, 75, 255, cv.THRESH_BINARY)
     # kernel = np.ones((8, 8), np.uint8)
     # cat_filter = cv.dilate(cat_filter, kernel, iterations=3)
-    # cat_filter = dil_er(cat_filter)
+    # cat_filter = dilation_erode(cat_filter)
     img_display.add_image(cat_filter1, 'cat filter 1')
 
     # imgL_rgb = cv.cvtColor(imgL, cv.COLOR_BGR2RGB)
@@ -127,15 +130,28 @@ if __name__ == '__main__':
 
     cat_filter2 = cv.inRange(imgL_rgb, np.array(
         [30, 30, 30]), np.array([150, 150, 80]))
-    cat_filter2 = dil_er(cat_filter2, 20)
+    cat_filter2 = dilation_erode(cat_filter2, 20)
     cat_filter2 = cv.bitwise_not(cat_filter2)
     img_display.add_image(cat_filter2, 'cat filter 2')
     cat_filter = cv.bitwise_and(cat_filter1, cat_filter2)
-    cat_filter = dil_er(cat_filter)
+    cat_filter = dilation_erode(cat_filter)
     img_display.add_image(cat_filter, 'cat filter')
 
+    final_filter[cat_filter == 255] = [255, 0, 0]
     cat = cv.bitwise_and(imgL_rgb, imgL_rgb, mask=cat_filter)
-    img_display.add_image(cat, 'cat filtered', 'viridis')
+    img_display.add_image(cat, 'cat', 'viridis')
+
+    # extract bench
+    ret, bench_filter = cv.threshold(
+        dept_map, 230, 255, cv.THRESH_TOZERO_INV)
+    ret, bench_filter = cv.threshold(
+        bench_filter, 190, 255, cv.THRESH_BINARY)
+    img_display.add_image(bench_filter, 'bench filter')
+
+    final_filter[bench_filter == 255] = [0, 255, 0]
+
+    # add final filter to be displayed
+    img_display.add_image(final_filter, 'final filter', 'viridis')
 
     # thresh = cv.adaptiveThreshold(
     #     dept_map, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 501, 10)
@@ -152,7 +168,7 @@ if __name__ == '__main__':
     # ret, thresh5 = cv.threshold(
     #     imgL_gray, th, 255, cv.THRESH_TRUNC + cv.THRESH_OTSU)
 
-    # thresh2 = dil_er(thresh2)
+    # thresh2 = dilation_erode(thresh2)
 
     # kernel = np.ones((15, 15), np.uint8)
     # img_dilation = cv.dilate(dept_map, kernel, iterations=1)
@@ -166,15 +182,4 @@ if __name__ == '__main__':
     # segmented_img = cv.cvtColor(imgL, cv.COLOR_BGR2RGB)
     # segmented_img[thresh == 0] = [0, 0, 0]
 
-    # plt.imshow(thresh, 'gray')
-    # plt.show()
-
-    # titles = ['Original', 'binary', 'binary inv', 'zero',
-    #           'zero inv', 'trunc']
-    # images = [imgL_gray, thresh1, thresh2, thresh3, thresh4, thresh5]
-    # for i in range(len(images)):
-    #     plt.subplot(2, 3, i+1), plt.imshow(images[i], 'gray')
-    #     plt.title(titles[i])
-    #     plt.xticks([]), plt.yticks([])
-    # plt.show()
     img_display.show()
