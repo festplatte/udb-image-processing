@@ -111,7 +111,7 @@ if __name__ == '__main__':
     img_display.add_image(dept_map, 'dept map')
 
     # build filter for the whole picture
-    final_filter = np.full(np.shape(imgL), [0, 0, 255])
+    final_segmentation = np.full(np.shape(imgL), [0, 0, 255])
 
     # extract cat
     # dept_map = dilation_erode(dept_map)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     cat_filter = dilation_erode(cat_filter)
     img_display.add_image(cat_filter, 'cat filter')
 
-    final_filter[cat_filter == 255] = [255, 0, 0]
+    final_segmentation[cat_filter == 255] = [255, 0, 0]
     cat = cv.bitwise_and(imgL_rgb, imgL_rgb, mask=cat_filter)
     img_display.add_image(cat, 'cat', 'viridis')
 
@@ -148,10 +148,10 @@ if __name__ == '__main__':
         bench_filter, 190, 255, cv.THRESH_BINARY)
     img_display.add_image(bench_filter, 'bench filter')
 
-    final_filter[bench_filter == 255] = [0, 255, 0]
+    final_segmentation[bench_filter == 255] = [0, 255, 0]
 
     # add final filter to be displayed
-    img_display.add_image(final_filter, 'final filter', 'viridis')
+    img_display.add_image(final_segmentation, 'final filter', 'viridis')
 
     # thresh = cv.adaptiveThreshold(
     #     dept_map, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 501, 10)
