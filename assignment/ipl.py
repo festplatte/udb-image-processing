@@ -56,8 +56,8 @@ class ImageSegmentation:
 
 # loads images and converts them to rgb
 def load_images():
-    imgL = cv.imread('../img/cat_l.jpg', 1)
-    imgR = cv.imread('../img/cat_r.jpg', 1)
+    imgL = cv.imread('images/cat_l.jpg', 1)
+    imgR = cv.imread('images/cat_r.jpg', 1)
     imgL = cv.cvtColor(imgL, cv.COLOR_BGR2RGB)
     imgR = cv.cvtColor(imgR, cv.COLOR_BGR2RGB)
     return imgL, imgR
@@ -87,3 +87,11 @@ def dilation_erode(img, kernel_size=10):
     img_dilation = cv.dilate(img, kernel, iterations=1)
     img_erode = cv.erode(img_dilation, kernel, iterations=1)
     return img_erode
+
+
+# applies erode and dilation to the given image with the given kernel size
+def erode_dilation(img, kernel_size=10):
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    img_erode = cv.erode(img, kernel, iterations=1)
+    img_dilation = cv.dilate(img_erode, kernel, iterations=1)
+    return img_dilation
