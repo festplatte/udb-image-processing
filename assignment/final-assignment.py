@@ -27,7 +27,7 @@ results = ipl.ImageDisplay()
 
 # ## Load images
 # 
-# In this section the image that needs to be processed is loaded. All the methods are applied to a photo that shows an outdoor scene with a cat on a wall and a bench in the background. The task is to build a filter image that colors the areas for the cat and the bench. Since the photo was taken with a stereoscopic camera there are two pictures which slightly different viewing angles. The function `load_images` returns the pictures `imgL` and `imgR` that correspond to the left and right camera or to the two eyes when considering a human observer.
+# In this section the image that needs to be processed is loaded. All the methods are applied to a photo that shows an outdoor scene with a cat on a wall and a bench in the background. The task is to build a filter image that colors the areas for the cat, the bench and the wall. Since the photo was taken with a stereoscopic camera there are two pictures which slightly different viewing angles. The function `load_images` returns the pictures `imgL` and `imgR` that correspond to the left and right camera or to the two eyes when considering a human observer.
 # 
 # Both images are loaded with the rgb color scheme and have the shape `(1000, 1486, 3)` which corresponds to a picture with 1486 x 1000 pixels with 3 color channels for each pixel. They are also converted to obtain a grayscale representation since this is needed for further processing.
 
@@ -65,6 +65,7 @@ dept_map = np.uint8(dept_map / np.amax(dept_map) * 255)
 
 # reduce noise with low-pass filter
 dept_map = cv.medianBlur(dept_map, 7)
+dept_map = ipl.morph_close(dept_map)
 
 results.add_image(dept_map, 'dept map')
 plt.imshow(dept_map, 'gray')
@@ -83,7 +84,7 @@ final_segmentation = ipl.ImageSegmentation(imgL)
 
 # ## Segment cat
 # 
-# There are multiple ways to extract an area from an image. In this example the cat is extracted using the dept map and color thresholding. First of all the dept map is filtered to gain all pixels that have the same distance to the camera as the cat. This results in a filter that also selects some pixels of the wall since they have the same distance and which are considered as noise. To reduce the amount of noise a second filter is built that uses color thresholding to get all pixels of the wall. Since the colors of the wall and the cat are very different the second filter doesn't contain pixels of the cat. The second filter can now be substracted from the first one by inverting it and using the bitwise *and* operation which results in a mask for the cat with less noise.
+# There are multiple ways to extract an area from an image. In this example the cat is extracted using the dept map and color thresholding. First of all the dept map is filtered to gain all pixels that have the same distance to the camera as the cat. This results in a filter that also selects some pixels of the wall since they have the same distance and which are considered as noise. To reduce the amount of noise a second filter is built that uses color thresholding to get all pixels of the wall. Since the colors of the wall and the cat are very different the second filter doesn't contain pixels of the cat. The second filter can now be substracted from the first one which results in a mask for the cat with less noise.
 # 
 # To make the masks more precise the erode and dilation methods are used which make the selected areas smaller at first and enlarge them in the second step again to get the original size. During that process small noisy areas disappear. If they are used in reversed order they can help to fill gaps between larger areas.
 # 
@@ -101,13 +102,14 @@ ret, cat_filter1 = cv.threshold(
 # color threshold on the image to select the wall
 cat_filter2 = cv.inRange(imgL, np.array(
     [30, 30, 30]), np.array([150, 150, 80]))
-cat_filter2 = ipl.dilation_erode(cat_filter2, 15)
+cat_filter2 = ipl.morph_close(cat_filter2, 15)
 
 # substract filter 2 from filter 1
-cat_filter2 = cv.bitwise_not(cat_filter2)
-cat_filter = cv.bitwise_and(cat_filter1, cat_filter2)
-cat_filter = ipl.erode_dilation(cat_filter)
-cat_filter = ipl.dilation_erode(cat_filter, 20)
+cat_filter = cv.subtract(cat_filter1, cat_filter2)
+
+# fill gaps and reduce noise
+cat_filter = ipl.morph_open(cat_filter)
+cat_filter = ipl.morph_close(cat_filter, 20)
 
 results.add_image(cat_filter, 'cat filter')
 final_segmentation.add_mask(cat_filter, [255, 0, 0])
@@ -128,7 +130,11 @@ plt.show()
 ret, bench_filter = cv.threshold(
     dept_map, 230, 255, cv.THRESH_TOZERO_INV)
 ret, bench_filter = cv.threshold(
-    bench_filter, 190, 255, cv.THRESH_BINARY)
+    bench_filter, 156, 255, cv.THRESH_BINARY)
+
+# fill gaps and reduce noise
+bench_filter = ipl.morph_open(bench_filter)
+bench_filter = ipl.morph_close(bench_filter)
 
 results.add_image(bench_filter, 'bench filter')
 final_segmentation.add_mask(bench_filter, [0, 255, 0])
@@ -136,11 +142,39 @@ plt.imshow(final_segmentation.apply_mask(bench_filter))
 plt.show()
 
 
+# ## Segment wall
+# 
+# To build the mask for the wall the same algorithms as before are applied. The threshold on the dept map results in a filter that contains the wall but also the cat because it has the same distance to the camera as parts of the wall. To exclude the cat from the wall filter it's necessary to substract the already produced cat filter from it. After that the area of the wall has some gaps that can be filled by applying erode and dilation again but with a larger kernel size to get a smooth filter for the wall without noise.
+# 
+# The mask is also added to the `final_segmentation` with yellow color.
+
+# In[7]:
+
+
+# threshold on dept map
+ret, wall_filter = cv.threshold(
+    dept_map, 142, 255, cv.THRESH_TOZERO_INV)
+ret, wall_filter = cv.threshold(
+    wall_filter, 1, 255, cv.THRESH_BINARY)
+
+# substract cat filter
+wall_filter = cv.subtract(wall_filter, cat_filter)
+
+# fill gaps and reduce noise
+wall_filter = ipl.morph_open(wall_filter, 20, 2)
+wall_filter = ipl.morph_close(wall_filter, 50, 3)
+
+results.add_image(wall_filter, 'wall filter')
+final_segmentation.add_mask(wall_filter, [255, 255, 0])
+plt.imshow(final_segmentation.apply_mask(wall_filter))
+plt.show()
+
+
 # ## Display results
 # 
 # This section shows the produced masks together with the original image. The last output is the final segmentation which shows the cat in red, the bench in green and the blue background.
 
-# In[7]:
+# In[8]:
 
 
 # add the final segmentation to results

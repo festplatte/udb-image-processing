@@ -82,16 +82,16 @@ def build_dept_map(imgL, imgR):
 
 
 # applies dilation and erode to the given image with the given kernel size
-def dilation_erode(img, kernel_size=10):
+def morph_close(img, kernel_size=10, iterations=1):
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    img_dilation = cv.dilate(img, kernel, iterations=1)
-    img_erode = cv.erode(img_dilation, kernel, iterations=1)
+    img_dilation = cv.dilate(img, kernel, iterations=iterations)
+    img_erode = cv.erode(img_dilation, kernel, iterations=iterations)
     return img_erode
 
 
 # applies erode and dilation to the given image with the given kernel size
-def erode_dilation(img, kernel_size=10):
+def morph_open(img, kernel_size=10, iterations=1):
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    img_erode = cv.erode(img, kernel, iterations=1)
-    img_dilation = cv.dilate(img_erode, kernel, iterations=1)
+    img_erode = cv.erode(img, kernel, iterations=iterations)
+    img_dilation = cv.dilate(img_erode, kernel, iterations=iterations)
     return img_dilation
