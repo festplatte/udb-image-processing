@@ -63,8 +63,8 @@ def load_images():
     return imgL, imgR
 
 
-# gererate dept map
-def build_dept_map(imgL, imgR):
+# gererate depth map
+def build_depth_map(imgL, imgR):
     stereo = cv.StereoBM_create()
     stereo.setBlockSize(37)  # default: 21
     stereo.setDisp12MaxDiff(-1)  # default: -1
